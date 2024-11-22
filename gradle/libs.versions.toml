@@ -1,5 +1,9 @@
 [versions]
 agp = "8.6.0"
+googleApiClient = "1.34.0"
+googleApiServicesOauth2 = "v2-rev157-1.25.0"
+googleHttpClientJackson2 = "1.40.1"
+googleOauthClientJetty = "1.34.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
@@ -8,6 +12,7 @@ material = "1.12.0"
 activity = "1.9.3"
 constraintlayout = "2.1.4"
 mediarouter = "1.7.0"
+playServicesAuth = "21.2.0"
 
 
 [libraries]
@@ -15,6 +20,10 @@ camera-core = { group = "androidx.camera", name = "camera-core", version = "1.1.
 camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version = "1.1.0" }
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version = "1.1.0" }
 camera-view = { group = "androidx.camera", name = "camera-view", version = "1.0.0-alpha31" }
+google-api-client = { module = "com.google.api-client:google-api-client", version.ref = "googleApiClient" }
+google-api-services-oauth2 = { module = "com.google.apis:google-api-services-oauth2", version.ref = "googleApiServicesOauth2" }
+google-http-client-jackson2 = { module = "com.google.http-client:google-http-client-jackson2", version.ref = "googleHttpClientJackson2" }
+google-oauth-client-jetty = { module = "com.google.oauth-client:google-oauth-client-jetty", version.ref = "googleOauthClientJetty" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -23,6 +32,7 @@ material = { group = "com.google.android.material", name = "material", version.r
 activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouter" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

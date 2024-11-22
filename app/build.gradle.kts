@@ -25,6 +25,13 @@ android {
             )
         }
     }
+
+    packagingOptions {
+        resources {
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -45,4 +52,12 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    implementation(libs.google.api.client)
+    implementation(libs.google.oauth.client.jetty)
+    implementation(libs.google.http.client.jackson2)
+    implementation(libs.google.api.client)
+    implementation(libs.play.services.auth)
+    implementation(libs.google.oauth.client.jetty)
+    implementation(libs.google.http.client.jackson2)
+    implementation(libs.google.api.services.oauth2)
 }
