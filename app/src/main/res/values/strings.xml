@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SEEFOOD</string>
+    <string name="email">email</string>
+    <string name="history_button">history_button</string>
+</resources>
