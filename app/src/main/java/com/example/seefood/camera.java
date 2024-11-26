@@ -37,6 +37,9 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -53,6 +56,8 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class camera extends AppCompatActivity {
@@ -65,11 +70,16 @@ public class camera extends AppCompatActivity {
     private ImageView capturedImageView;
     private static final String API_URL = "https://api.openai.com/v1/chat/completions";
     private static final String API_KEY = "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";
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
+
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -122,6 +132,11 @@ public class camera extends AppCompatActivity {
         }
 
         return true;
+    }
+
+    public void openAccountSettings(MenuItem item) {
+        Intent intent = new Intent(this, accountSettings.class);
+        startActivity(intent);
     }
 
     @Override
@@ -182,21 +197,17 @@ public class camera extends AppCompatActivity {
     }
 
     private void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
-        // Unbind all use cases before rebinding
         cameraProvider.unbindAll();
 
-        // Create a Preview use case
         Preview preview = new Preview.Builder().build();
         CameraSelector cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build();
 
-        // Create an ImageCapture use case with a lower resolution
         imageCapture = new ImageCapture.Builder()
-                .setTargetResolution(new Size(720, 1280)) // Adjust resolution as needed
+                .setTargetResolution(new Size(720, 1280))
                 .build();
 
-        // Bind the use cases to the camera with the lifecycle
         try {
             cameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector, preview, imageCapture);
             preview.setSurfaceProvider(((PreviewView) findViewById(R.id.previewView)).getSurfaceProvider());
@@ -223,6 +234,7 @@ public class camera extends AppCompatActivity {
                     Bitmap compressedBitmap = compressImage(photoFile);
                     String base64Image = encodeImageToBase64(compressedBitmap);
                     sendImageToOpenAI(base64Image);
+                    incrementPictureCounter();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -233,6 +245,52 @@ public class camera extends AppCompatActivity {
                 Toast.makeText(camera.this, "Failed to capture photo: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void incrementPictureCounter() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            Toast.makeText(camera.this, "Inside if statement", Toast.LENGTH_SHORT).show();
+            String userId = user.getUid();
+            db.collection("users").document(userId).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            Long hotDogCount = documentSnapshot.getLong("hotDogCount");
+                            if (hotDogCount == null) {
+                                hotDogCount = 0L;
+                            }
+                            db.collection("users").document(userId)
+                                    .update("hotDogCount", hotDogCount + 1)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Counter incremented successfully");
+                                        Toast.makeText(camera.this, "Counter incremented successfully", Toast.LENGTH_SHORT).show();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Failed to increment counter: " + e.getMessage());
+                                        Toast.makeText(camera.this, "Failed to increment counter: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    });
+                        } else {
+                            Map<String, Object> userData = new HashMap<>();
+                            userData.put("hotDogCount", 1);
+                            db.collection("users").document(userId).set(userData)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Document created and counter set to 1");
+                                        Toast.makeText(camera.this, "Document created and counter set to 1", Toast.LENGTH_SHORT).show();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Failed to create document: " + e.getMessage());
+                                        Toast.makeText(camera.this, "Failed to create document: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    });
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Failed to get user data: " + e.getMessage());
+                        Toast.makeText(camera.this, "Failed to get user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+        } else {
+            Log.e(TAG, "User is null");
+            Toast.makeText(camera.this, "User is null", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private Bitmap compressImage(File originalFile) throws IOException {

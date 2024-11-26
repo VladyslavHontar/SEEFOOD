@@ -15,38 +15,32 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
-
-import java.io.InputStreamReader;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class SignInActivity extends AppCompatActivity {
 
     private static final int RC_SIGN_IN = 9001;
-    private GoogleCredential credential;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_in);
-
-        try {
-            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-                    JacksonFactory.getDefaultInstance(),
-                    new InputStreamReader(getResources().openRawResource(R.raw.client_secret_509966130942_v9drgo9l4grrabc15lh0tcacthnjg1sm_apps_googleusercontent_com))
-            );
-
-            credential = new GoogleCredential.Builder()
-                    .setTransport(GoogleNetHttpTransport.newTrustedTransport())
-                    .setJsonFactory(JacksonFactory.getDefaultInstance())
-                    .setClientSecrets(clientSecrets)
-                    .build();
-
-        } catch (Exception e) {
-            Log.e("SignInActivity", "Error loading client secrets", e);
+        mAuth = FirebaseAuth.getInstance();
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            Intent mainIntent = new Intent(SignInActivity.this, MainActivity.class);
+            startActivity(mainIntent);
+            finish();
+        } else {
+            signIn();
         }
+        FirebaseApp.initializeApp(this);
 
         Button signInButton = findViewById(R.id.sign_in_button);
         signInButton.setOnClickListener(v -> signIn());
@@ -56,14 +50,18 @@ public class SignInActivity extends AppCompatActivity {
         Log.d("SignInActivity", "Sign-in button clicked");
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id)) // Request the ID token
                 .requestEmail()
                 .build();
 
         GoogleSignInClient googleSignInClient = GoogleSignIn.getClient(this, gso);
 
-        Intent signInIntent = googleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent, RC_SIGN_IN);
+        googleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            Intent signInIntent = googleSignInClient.getSignInIntent();
+            startActivityForResult(signInIntent, RC_SIGN_IN);
+        });
     }
+
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -78,20 +76,54 @@ public class SignInActivity extends AppCompatActivity {
     private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
         try {
             GoogleSignInAccount account = completedTask.getResult(ApiException.class);
-            updateUI(account);
+            if (account != null) {
+                String idToken = account.getIdToken();
+                if (idToken != null) {
+                    AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
+                    FirebaseAuth.getInstance().signInWithCredential(credential)
+                            .addOnCompleteListener(this, task -> {
+                                if (task.isSuccessful()) {
+                                    FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                                    Toast.makeText(this, FirebaseAuth.getInstance().getCurrentUser().toString(), Toast.LENGTH_SHORT).show();
+                                    updateUI(user);
+                                } else {
+                                    Toast.makeText(SignInActivity.this, "Authentication failed", Toast.LENGTH_SHORT).show();
+                                    updateUI(null);
+                                }
+                            });
+                } else {
+                    throw new IllegalArgumentException("Must specify an idToken or an accessToken.");
+                }
+            }
         } catch (ApiException e) {
             Log.w("SignInActivity", "signInResult:failed code=" + e.getStatusCode());
             updateUI(null);
         }
     }
 
-    private void updateUI(@Nullable GoogleSignInAccount account) {
-        if (account != null) {
+    private void updateUI(@Nullable FirebaseUser user) {
+        if (user != null) {
+            loadUserData(user);
             Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
             finish();
         } else {
             Toast.makeText(this, "Sign-In Failed", Toast.LENGTH_SHORT).show();
+
         }
+    }
+
+    private void loadUserData(FirebaseUser user) {
+        String userId = user.getUid();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("users").document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Long hotDogCount = documentSnapshot.getLong("hotDogCount");
+                        if (hotDogCount != null) {
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> Log.e("FirestoreLoad", "Failed to load user data: " + e.getMessage()));
     }
 }

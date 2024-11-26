@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "511796236956",
+    "project_id": "seesy-ce055",
+    "storage_bucket": "seesy-ce055.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:511796236956:android:8fbb90983b2bac70c75359",
+        "android_client_info": {
+          "package_name": "com.example.seefood"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "511796236956-0s6r4rvje94ggt5qeeuf0kqf78kpui21.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.seefood",
+            "certificate_hash": "29598ec14891c8a2ffbecec87e80e1051680e5a5"
+          }
+        },
+        {
+          "client_id": "511796236956-2kc39ojf4g4ef8b4v1p3nts1nnkrbqpi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfTBcOCUF0WCGKno-mFLPyiq2pCArZlG8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "511796236956-2kc39ojf4g4ef8b4v1p3nts1nnkrbqpi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -42,6 +43,7 @@ android {
 dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
+    implementation(libs.material.v190)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.camera.core)
@@ -60,4 +62,11 @@ dependencies {
     implementation(libs.google.oauth.client.jetty)
     implementation(libs.google.http.client.jackson2)
     implementation(libs.google.api.services.oauth2)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.firestore)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.glide)
+    annotationProcessor(libs.compiler)
 }

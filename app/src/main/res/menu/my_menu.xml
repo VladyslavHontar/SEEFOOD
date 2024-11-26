@@ -20,4 +20,11 @@
         android:icon="@drawable/email"
         android:title="Email"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/account_settings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Account Settings"
+        app:showAsAction="never"
+        android:onClick="openAccountSettings" />
 </menu>
