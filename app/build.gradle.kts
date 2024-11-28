@@ -68,5 +68,9 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.glide)
+    implementation(libs.play.services.location)
+    implementation(libs.play.services.maps)
+    implementation(libs.core.ktx)
+    implementation(libs.appcompat)
     annotationProcessor(libs.compiler)
 }

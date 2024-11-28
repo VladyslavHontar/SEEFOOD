@@ -6,6 +6,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.location.Address;
+import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Size;
@@ -39,7 +41,10 @@ import androidx.lifecycle.LifecycleOwner;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,6 +54,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
@@ -57,6 +63,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -183,6 +191,7 @@ public class camera extends AppCompatActivity {
         responseReceived = false;
         startCamera();
     }
+
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
 
@@ -235,6 +244,7 @@ public class camera extends AppCompatActivity {
                     String base64Image = encodeImageToBase64(compressedBitmap);
                     sendImageToOpenAI(base64Image);
                     incrementPictureCounter();
+                    updateUserLocation();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -292,6 +302,83 @@ public class camera extends AppCompatActivity {
             Toast.makeText(camera.this, "User is null", Toast.LENGTH_SHORT).show();
         }
     }
+
+    private void updateUserLocation() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            String userId = user.getUid();
+
+            FusedLocationProviderClient fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                    && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                        CAMERA_PERMISSION_CODE);
+                return;
+            }
+
+            fusedLocationProviderClient.getLastLocation()
+                    .addOnSuccessListener(location -> {
+                        if (location != null) {
+                            double latitude = location.getLatitude();
+                            double longitude = location.getLongitude();
+
+                            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                            try {
+                                List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
+                                if (addresses != null && !addresses.isEmpty()) {
+                                    Address address = addresses.get(0);
+                                    String fullAddress = address.getAddressLine(0);
+
+                                    Map<String, Object> locationData = new HashMap<>();
+                                    locationData.put("latitude", latitude);
+                                    locationData.put("longitude", longitude);
+                                    locationData.put("address", fullAddress);
+
+                                    db.collection("users").document(userId)
+                                            .update("photoLocations", FieldValue.arrayUnion(locationData))
+                                            .addOnSuccessListener(aVoid -> {
+                                                Log.d(TAG, "Location updated successfully");
+                                                Toast.makeText(this, "Location updated successfully", Toast.LENGTH_SHORT).show();
+                                            })
+                                            .addOnFailureListener(e -> {
+                                                Map<String, Object> newData = new HashMap<>();
+                                                newData.put("photoLocations", new ArrayList<>(List.of(locationData)));
+                                                db.collection("users").document(userId).set(newData)
+                                                        .addOnSuccessListener(unused -> {
+                                                            Log.d(TAG, "Location document created successfully");
+                                                            Toast.makeText(this, "Location document created successfully", Toast.LENGTH_SHORT).show();
+                                                        })
+                                                        .addOnFailureListener(err -> {
+                                                            Log.e(TAG, "Failed to create document: " + err.getMessage());
+                                                            Toast.makeText(this, "Failed to create document: " + err.getMessage(), Toast.LENGTH_SHORT).show();
+                                                        });
+                                            });
+                                } else {
+                                    Log.e(TAG, "No address found for location");
+                                    Toast.makeText(this, "No address found for location", Toast.LENGTH_SHORT).show();
+                                }
+                            } catch (IOException e) {
+                                Log.e(TAG, "Geocoder error: " + e.getMessage());
+                                Toast.makeText(this, "Geocoder error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Log.e(TAG, "Location is null");
+                            Toast.makeText(this, "Unable to get location", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Failed to get location: " + e.getMessage());
+                        Toast.makeText(this, "Failed to get location: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+        } else {
+            Log.e(TAG, "User is null");
+            Toast.makeText(this, "User is null", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
 
     private Bitmap compressImage(File originalFile) throws IOException {
         Bitmap originalBitmap = BitmapFactory.decodeFile(originalFile.getAbsolutePath());

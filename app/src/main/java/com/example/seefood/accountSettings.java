@@ -17,7 +17,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -69,8 +68,8 @@ public class accountSettings extends AppCompatActivity {
             Uri imageUri = data.getData();
             try {
                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-                profilePicture.setImageBitmap(bitmap);
-                uploadImageToFirebase(bitmap);
+                profilePicture.setImageBitmap(bitmap); // Display selected image in the ImageView
+                uploadImageToFirebase(bitmap); // Save image to Firebase
             } catch (IOException e) {
                 Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
                 e.printStackTrace();
@@ -95,8 +94,7 @@ public class accountSettings extends AppCompatActivity {
                 Log.d("FirebaseUpload", "Upload successful");
                 profilePicRef.getDownloadUrl().addOnSuccessListener(uri -> {
                     String downloadUrl = uri.toString();
-                    saveUserSettings(userId, downloadUrl);
-                    Log.d("FirebaseUpload", "Download URL: " + downloadUrl);
+                    saveImageUrlToFirestore(userId, downloadUrl); // Save image URL to Firestore
                 }).addOnFailureListener(e -> {
                     Log.e("FirebaseUpload", "Failed to fetch download URL: " + e.getMessage());
                     Toast.makeText(accountSettings.this, "Failed to get image URL", Toast.LENGTH_SHORT).show();
@@ -110,19 +108,24 @@ public class accountSettings extends AppCompatActivity {
         }
     }
 
-    private void saveUserSettings(String userId, String profilePictureUrl) {
-        Map<String, Object> userSettings = new HashMap<>();
-        userSettings.put("profilePictureUrl", profilePictureUrl);
-        userSettings.put("name", "User's Name");
-        userSettings.put("email", mAuth.getCurrentUser().getEmail());
-        userSettings.put("updatedAt", System.currentTimeMillis());
-
-        db.collection("users").document(userId).set(userSettings)
+    private void saveImageUrlToFirestore(String userId, String profilePictureUrl) {
+        db.collection("users").document(userId)
+                .update("profilePictureUrl", profilePictureUrl)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(accountSettings.this, "Profile picture and settings updated", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(accountSettings.this, "Profile picture updated successfully", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(accountSettings.this, "Failed to update settings: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    // If the document does not exist, create a new one
+                    Map<String, Object> userSettings = new HashMap<>();
+                    userSettings.put("profilePictureUrl", profilePictureUrl);
+                    userSettings.put("updatedAt", System.currentTimeMillis());
+                    db.collection("users").document(userId).set(userSettings)
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(accountSettings.this, "Profile picture and settings created", Toast.LENGTH_SHORT).show();
+                            })
+                            .addOnFailureListener(err -> {
+                                Toast.makeText(accountSettings.this, "Failed to update settings: " + err.getMessage(), Toast.LENGTH_SHORT).show();
+                            });
                 });
     }
 
@@ -131,15 +134,19 @@ public class accountSettings extends AppCompatActivity {
         if (user != null) {
             String userId = user.getUid();
 
+            // Load user's profile picture and hot-dog count from Firestore
             db.collection("users").document(userId).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
-                            Long hotDogCount = documentSnapshot.getLong("hotDogCount");
-                            if (hotDogCount != null) {
-                                hotDogCountTextView.setText("Hot-dog pictures taken: " + hotDogCount);
-                            } else {
-                                hotDogCountTextView.setText("Hot-dog pictures taken: 0");
+                            // Load profile picture
+                            String profilePictureUrl = documentSnapshot.getString("profilePictureUrl");
+                            if (profilePictureUrl != null) {
+                                Glide.with(this).load(profilePictureUrl).into(profilePicture);
                             }
+
+                            // Load hot-dog count
+                            Long hotDogCount = documentSnapshot.getLong("hotDogCount");
+                            hotDogCountTextView.setText("Hot-dog pictures taken: " + (hotDogCount != null ? hotDogCount : 0));
                         }
                     })
                     .addOnFailureListener(e -> Log.e("FirestoreLoad", "Failed to load user data: " + e.getMessage()));

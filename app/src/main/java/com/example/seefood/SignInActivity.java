@@ -20,7 +20,6 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 public class SignInActivity extends AppCompatActivity {
 
@@ -103,7 +102,6 @@ public class SignInActivity extends AppCompatActivity {
 
     private void updateUI(@Nullable FirebaseUser user) {
         if (user != null) {
-            loadUserData(user);
             Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
             finish();
@@ -111,19 +109,5 @@ public class SignInActivity extends AppCompatActivity {
             Toast.makeText(this, "Sign-In Failed", Toast.LENGTH_SHORT).show();
 
         }
-    }
-
-    private void loadUserData(FirebaseUser user) {
-        String userId = user.getUid();
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("users").document(userId).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        Long hotDogCount = documentSnapshot.getLong("hotDogCount");
-                        if (hotDogCount != null) {
-                        }
-                    }
-                })
-                .addOnFailureListener(e -> Log.e("FirestoreLoad", "Failed to load user data: " + e.getMessage()));
     }
 }
